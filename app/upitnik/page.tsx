@@ -234,9 +234,9 @@ function SelectDropdown({
 }
 
 function MultiSelectPills({
-  label, options, selected, onToggle,
+  label, options, selected, onToggle, error,
 }: {
-  label: string; options: string[]; selected: string[]; onToggle: (v: string) => void;
+  label: string; options: string[]; selected: string[]; onToggle: (v: string) => void; error?: string;
 }) {
   return (
     <div>
@@ -259,14 +259,15 @@ function MultiSelectPills({
           );
         })}
       </div>
+      <FieldError msg={error} />
     </div>
   );
 }
 
 function RadioCards({
-  label, options, selected, onSelect,
+  label, options, selected, onSelect, error,
 }: {
-  label: string; options: { value: string; label: string }[]; selected: string; onSelect: (v: string) => void;
+  label: string; options: { value: string; label: string }[]; selected: string; onSelect: (v: string) => void; error?: string;
 }) {
   return (
     <div>
@@ -289,14 +290,15 @@ function RadioCards({
           );
         })}
       </div>
+      <FieldError msg={error} />
     </div>
   );
 }
 
 function PillPicker({
-  label, options, selected, onSelect,
+  label, options, selected, onSelect, error,
 }: {
-  label: string; options: string[]; selected: string; onSelect: (v: string) => void;
+  label: string; options: string[]; selected: string; onSelect: (v: string) => void; error?: string;
 }) {
   return (
     <div>
@@ -319,6 +321,7 @@ function PillPicker({
           );
         })}
       </div>
+      <FieldError msg={error} />
     </div>
   );
 }
@@ -508,10 +511,20 @@ function Korak3({
 }: {
   data: FormData; update: (p: Partial<FormData>) => void; onNext: () => void; onBack: () => void;
 }) {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   const toggleKupac = (v: string) => {
-    update({
-      kupci: data.kupci.includes(v) ? data.kupci.filter((k) => k !== v) : [...data.kupci, v],
-    });
+    const updated = data.kupci.includes(v) ? data.kupci.filter((k) => k !== v) : [...data.kupci, v];
+    update({ kupci: updated });
+    if (updated.length > 0) setErrors((prev) => ({ ...prev, kupci: "" }));
+  };
+
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (data.kupci.length === 0) e.kupci = "Odaberite barem jednu opciju";
+    if (!data.uslugeProizvodi.trim()) e.uslugeProizvodi = "Opis usluga je obavezan";
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
   return (
@@ -523,13 +536,16 @@ function Korak3({
           options={KUPCI_OPCIJE}
           selected={data.kupci}
           onToggle={toggleKupac}
+          error={errors.kupci}
         />
         <TextArea
           label="Koje usluge ili proizvode nudite?"
           value={data.uslugeProizvodi}
-          onChange={(v) => update({ uslugeProizvodi: v })}
+          onChange={(v) => { update({ uslugeProizvodi: v }); if (v.trim()) setErrors((prev) => ({ ...prev, uslugeProizvodi: "" })); }}
           placeholder="Npr. Pizza, pasta, dostava, catering..."
           rows={3}
+          required
+          error={errors.uslugeProizvodi}
         />
         <TextInput
           label="Radno vrijeme"
@@ -538,7 +554,7 @@ function Korak3({
           placeholder="Npr. Pon-Pet 08-20h, Sub 09-16h"
         />
       </div>
-      <NavButtons onNext={onNext} onBack={onBack} />
+      <NavButtons onNext={() => { if (validate()) onNext(); }} onBack={onBack} />
     </div>
   );
 }
@@ -546,9 +562,9 @@ function Korak3({
 // --- Korak 4 ---
 
 function VisualStylePicker({
-  selected, onSelect,
+  selected, onSelect, error,
 }: {
-  selected: string; onSelect: (v: string) => void;
+  selected: string; onSelect: (v: string) => void; error?: string;
 }) {
   return (
     <div>
@@ -581,14 +597,15 @@ function VisualStylePicker({
           );
         })}
       </div>
+      <FieldError msg={error} />
     </div>
   );
 }
 
 function ColorMoodPicker({
-  selected, onSelect,
+  selected, onSelect, error,
 }: {
-  selected: string; onSelect: (v: string) => void;
+  selected: string; onSelect: (v: string) => void; error?: string;
 }) {
   return (
     <div>
@@ -615,6 +632,7 @@ function ColorMoodPicker({
           );
         })}
       </div>
+      <FieldError msg={error} />
     </div>
   );
 }
@@ -624,17 +642,37 @@ function Korak4({
 }: {
   data: FormData; update: (p: Partial<FormData>) => void; onNext: () => void; onBack: () => void;
 }) {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!data.stil) e.stil = "Molimo odaberite stil";
+    if (!data.colorMood) e.colorMood = "Molimo odaberite color mood";
+    if (!data.tonKomunikacije) e.tonKomunikacije = "Molimo odaberite ton komunikacije";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
   return (
     <div>
       <StepHeader badge="Korak 4 — Brend i stil" title="Kakav izgled želite?" subtitle="Definišite vizualni identitet vašeg biznisa" />
       <div className="space-y-7 mb-8">
-        <VisualStylePicker selected={data.stil} onSelect={(v) => update({ stil: v })} />
-        <ColorMoodPicker selected={data.colorMood} onSelect={(v) => update({ colorMood: v })} />
+        <VisualStylePicker
+          selected={data.stil}
+          onSelect={(v) => { update({ stil: v }); if (v) setErrors((prev) => ({ ...prev, stil: "" })); }}
+          error={errors.stil}
+        />
+        <ColorMoodPicker
+          selected={data.colorMood}
+          onSelect={(v) => { update({ colorMood: v }); if (v) setErrors((prev) => ({ ...prev, colorMood: "" })); }}
+          error={errors.colorMood}
+        />
         <PillPicker
           label="Ton komunikacije"
           options={TONOVI_KOMUNIKACIJE}
           selected={data.tonKomunikacije}
-          onSelect={(v) => update({ tonKomunikacije: v })}
+          onSelect={(v) => { update({ tonKomunikacije: v }); if (v) setErrors((prev) => ({ ...prev, tonKomunikacije: "" })); }}
+          error={errors.tonKomunikacije}
         />
         <div>
           <FieldLabel text="Jezik outputa" />
@@ -648,7 +686,7 @@ function Korak4({
           </select>
         </div>
       </div>
-      <NavButtons onNext={onNext} onBack={onBack} />
+      <NavButtons onNext={() => { if (validate()) onNext(); }} onBack={onBack} />
     </div>
   );
 }
@@ -660,12 +698,26 @@ function Korak5A({
 }: {
   data: FormData; update: (p: Partial<FormData>) => void; onSubmit: () => void; onBack: () => void;
 }) {
+  const [kontaktError, setKontaktError] = useState("");
+
+  const clearKontaktError = (telefon: string, email: string) => {
+    if (telefon.trim() || email.trim()) setKontaktError("");
+  };
+
   const togglePlatforma = (v: string) => {
     update({
       platforme5A: data.platforme5A.includes(v)
         ? data.platforme5A.filter((p) => p !== v)
         : [...data.platforme5A, v],
     });
+  };
+
+  const validate = () => {
+    if (!data.telefon5A.trim() && !data.email.trim()) {
+      setKontaktError("Unesite barem telefon ili email adresu");
+      return false;
+    }
+    return true;
   };
 
   return (
@@ -681,17 +733,20 @@ function Korak5A({
         <TextInput
           label="Telefon"
           value={data.telefon5A}
-          onChange={(v) => update({ telefon5A: v })}
+          onChange={(v) => { update({ telefon5A: v }); clearKontaktError(v, data.email); }}
           placeholder="+387 61 000 000"
           type="tel"
         />
-        <TextInput
-          label="Email"
-          value={data.email}
-          onChange={(v) => update({ email: v })}
-          placeholder="vas@email.com"
-          type="email"
-        />
+        <div>
+          <TextInput
+            label="Email"
+            value={data.email}
+            onChange={(v) => { update({ email: v }); clearKontaktError(data.telefon5A, v); }}
+            placeholder="vas@email.com"
+            type="email"
+          />
+          <FieldError msg={kontaktError} />
+        </div>
         <TextInput
           label="Planirana lokacija / grad"
           value={data.gradDrzava}
@@ -721,7 +776,7 @@ function Korak5A({
           rows={3}
         />
       </div>
-      <NavButtons onNext={onSubmit} onBack={onBack} nextLabel="Generiši moj paket!" />
+      <NavButtons onNext={() => { if (validate()) onSubmit(); }} onBack={onBack} nextLabel="Generiši moj paket!" />
     </div>
   );
 }
@@ -733,12 +788,22 @@ function Korak5B({
 }: {
   data: FormData; update: (p: Partial<FormData>) => void; onSubmit: () => void; onBack: () => void;
 }) {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   const togglePlatforma = (v: string) => {
     update({
       platforme5B: data.platforme5B.includes(v)
         ? data.platforme5B.filter((p) => p !== v)
         : [...data.platforme5B, v],
     });
+  };
+
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!data.imaLogoB) e.imaLogoB = "Molimo odaberite opciju";
+    if (!data.imaWebB) e.imaWebB = "Molimo odaberite opciju";
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
   return (
@@ -783,7 +848,8 @@ function Korak5B({
             { value: "ne", label: "Ne, nemam logo" },
           ]}
           selected={data.imaLogoB}
-          onSelect={(v) => update({ imaLogoB: v })}
+          onSelect={(v) => { update({ imaLogoB: v }); setErrors((prev) => ({ ...prev, imaLogoB: "" })); }}
+          error={errors.imaLogoB}
         />
         <RadioCards
           label="Imate li već web stranicu?"
@@ -792,7 +858,8 @@ function Korak5B({
             { value: "ne", label: "Ne, nemam" },
           ]}
           selected={data.imaWebB}
-          onSelect={(v) => update({ imaWebB: v })}
+          onSelect={(v) => { update({ imaWebB: v }); setErrors((prev) => ({ ...prev, imaWebB: "" })); }}
+          error={errors.imaWebB}
         />
         <TextArea
           label="Šta vam je najveći problem trenutno?"
@@ -802,7 +869,7 @@ function Korak5B({
           rows={3}
         />
       </div>
-      <NavButtons onNext={onSubmit} onBack={onBack} nextLabel="Generiši moj paket!" />
+      <NavButtons onNext={() => { if (validate()) onSubmit(); }} onBack={onBack} nextLabel="Generiši moj paket!" />
     </div>
   );
 }
